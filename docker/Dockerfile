@@ -1,38 +1,34 @@
 # Author: Tae Young Kim
 # email: tyoung96@yonsei.ac.kr
 
-FROM ros:melodic
+FROM ros:noetic-ros-base
 
-# Install PCL & Eigen & essential libraries
-RUN apt-get update && apt-get install -y cmake libeigen3-dev libpcl-dev \
-    ros-melodic-rviz ros-melodic-pcl-ros ros-melodic-eigen-conversions \
-    libatlas-base-dev libgoogle-glog-dev libsuitesparse-dev libglew-dev wget ros-melodic-image-transport-plugins
+# Install PCL & Eigen & Ceres & essential libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cmake libeigen3-dev libpcl-dev \
+    ros-noetic-rviz ros-noetic-pcl-ros ros-noetic-eigen-conversions \
+    libatlas-base-dev libgoogle-glog-dev libsuitesparse-dev libceres-dev wget \
+    ros-noetic-jsk-recognition ros-noetic-jsk-common-msgs ros-noetic-jsk-rviz-plugins \
+    ros-noetic-jsk-recognition-msgs \
+    ros-noetic-image-transport-plugins \
+    python3-pip python3-tk python3-matplotlib git \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install jsk-visualization
-RUN apt-get update && apt-get install -y ros-melodic-jsk-recognition ros-melodic-jsk-common-msgs ros-melodic-jsk-rviz-plugins
-
-# Install matplotlib
-RUN apt-get update && apt-get install -y python-pip python-tk && pip install matplotlib
-
-# Install ceres-solver
+# Install Livox SDK
 WORKDIR /root/thirdParty
-RUN wget https://github.com/ceres-solver/ceres-solver/archive/refs/tags/2.0.0.tar.gz
-RUN tar zxf 2.0.0.tar.gz
-RUN cd ceres-solver-2.0.0
-RUN mkdir build && cd build
-RUN ls
-RUN cmake -DCMAKE_BUILD_TYPE=Release ./ceres-solver-2.0.0 && make -j2 && make install
+RUN git clone https://github.com/Livox-SDK/Livox-SDK.git \
+    && cd Livox-SDK/build && cmake .. && make -j$(nproc) && make install \
+    && rm -rf /root/thirdParty/Livox-SDK
 
 # Install livox driver
 WORKDIR /root/livox_ws/src
-RUN wget https://github.com/Livox-SDK/livox_ros_driver/archive/refs/tags/v2.6.0.tar.gz
-RUN tar zxf v2.6.0.tar.gz && rm -rf v2.6.0.tar.gz
+RUN wget -q https://github.com/Livox-SDK/livox_ros_driver/archive/refs/tags/v2.6.0.tar.gz \
+    && tar zxf v2.6.0.tar.gz && rm -f v2.6.0.tar.gz
 
-RUN /bin/bash -c '. /opt/ros/melodic/setup.bash; catkin_init_workspace'
+RUN /bin/bash -c '. /opt/ros/noetic/setup.bash; catkin_init_workspace'
 
 WORKDIR /root/livox_ws
-RUN /bin/bash -c 'source /opt/ros/melodic/setup.bash && catkin_make'
-RUN /bin/bash -c 'source /root/livox_ws/devel/setup.bash'
+RUN /bin/bash -c 'source /opt/ros/noetic/setup.bash && catkin_make'
 
 WORKDIR /root/catkin_ws/
 
