@@ -64,25 +64,26 @@ Homogeneous Transformation Matrix from LiDAR frmae L to IMU frame I:
 
 #### GT の所在
 
-M2DGR gate-01 の IMU-LiDAR 外部パラメータ GT は、データセット内の複数ファイルに分散しており注意が必要。
+M2DGR gate-01 の IMU-LiDAR 外部パラメータ GT は、データセット内の複数ファイルに記載されている。GRIL-Calib が使うメイン IMU は Handsfree A9。
 
-- M2DGR 公式の [`calibration_results.txt`](https://github.com/SJTU-ViSYS/M2DGR/blob/main/calibration_results.txt) には **realsense d435i IMU** と **Xsens IMU** の外部パラメータしか無く、GRIL-Calib が実際に使うメイン IMU（Handsfree A9 = `/handsfree/imu`）が含まれていない。
-- メインの **Handsfree A9 ↔ Velodyne VLP-32C** の GT は、M2DGR 著者公式ツールキット [`sjtuyinjie/toolkit` の `config_files/liosam/params.yaml`](https://github.com/sjtuyinjie/toolkit/blob/main/config_files/liosam/params.yaml) に記載されている。
+M2DGR 公式の [`calibration_results.txt`](https://github.com/SJTU-ViSYS/M2DGR/blob/main/calibration_results.txt) の末尾に **Handsfree IMU**（= Handsfree A9）の外部パラメータが記載されている。`data` は OpenCV 形式の 3×4 外部パラメータ行列 `[R | t]` を平坦化したもので、各行が「回転 3 成分 | 並進 1 成分」になっている。回転 R は左 3×3 ブロック（= 単位行列）、並進 t は右端列 `[-0.27255, 0.00053, -0.17954]`。
 
-```yaml
-# Extrinsics (lidar -> IMU)
-extrinsicTrans: [0.27255, -0.00053, 0.17954]
-extrinsicRot:   [1,0,0, 0,1,0, 0,0,1]   # 単位行列（回転 GT = 0°）
-extrinsicRPY:   [1,0,0, 0,1,0, 0,0,1]
+```text
+%% Handsfree IMU
+% Extrinsic [to LIDAR]                ← 3×4 の [R | t]
+data: [1., 0., 0., -0.27255,         # R 行0 = (1,0,0) | tx = -0.27255
+       0., 1, 0., 0.00053,           # R 行1 = (0,1,0) | ty =  0.00053
+       0., 0., 1., -0.17954]         # R 行2 = (0,0,1) | tz = -0.17954
+# 左 3×3 = [[1,0,0],[0,1,0],[0,0,1]] = 単位行列（回転 GT = 0°）/ 右端列 = 並進
 ```
 
-検算: GRIL-Calib 論文 VI-B の「GT から RMSE 0.402 m ずらして初期並進 (0.6, 0.45, 0.6) を設定」と完全一致する。
+検算: GRIL-Calib は LiDAR → IMU 表記を使う。回転が単位行列なので、上記 `[to LIDAR]` の並進 `[-0.27255, 0.00053, -0.17954]`（IMU → LiDAR） を符号反転して GT（LiDAR → IMU）= `[0.27255, -0.00053, 0.17954]` を得る。これは GRIL-Calib 論文 VI-B の「GT から RMSE 0.402 m ずらして初期並進 (0.6, 0.45, 0.6) を設定」と完全一致する。
 
 `RMSE = √(((0.6−0.27255)² + (0.45+0.00053)² + (0.6−0.17954)²) / 3) = 0.403 m ≈ 0.402 m`
 
-なおこの外部 GT 自体は物理計測値ではなく、M2DGR 論文 ref[52]（LI-Calib, Lv et al.）の出力である点に留意。つまり M2DGR が提供する IMU–LiDAR 外部パラメータの「GT」は、計測された真値ではなく、別のターゲットレスキャリブレーション手法（LI-Calib）の出力である。GRIL-Calib はこの LI-Calib 由来の値を GT として Table I の RMSE を測っている、という構図になる。
+M2DGR が提供する IMU–LiDAR 外部パラメータの GT は、LI-Calib[52]の出力であることに注意。GRIL-Calib はこの値を GT として Table I の RMSE を測っている。
 
-ちなみに M2DGR 論文では、カメラ↔IMU は Kalibr [53]、LiDAR↔カメラは Autoware [54]、IMU 内部ノイズは [51] で較正、と記載されている。
+ちなみに M2DGR 論文では、カメラ↔IMU は Kalibr [53]、LiDAR↔カメラは Autoware [54]、IMU 内部ノイズは [51] でキャリブレーションされている。
 
 [51] O. J. Woodman, "An introduction to inertial navigation," Univ. of Cambridge, Computer Laboratory, Tech. Rep. UCAM-CL-TR-696, Aug. 2007.（IMU 内部ノイズモデル（白色雑音・ランダムウォーク）の出典。実装は [imu_utils](https://github.com/gaowenliang/imu_utils) が対応）
 [52] J. Lv, J. Xu, K. Hu, Y. Liu, and X. Zuo, "Targetless calibration of LiDAR-IMU system based on continuous-time batch estimation," in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst., 2020, pp. 9968–9975.（= LI-Calib。IMU↔LiDAR 外部 GT の生成手法）
@@ -119,6 +120,13 @@ GT: M2DGR 公式 / 実行結果: `result/GRIL_Calib_result.txt`
 | 並進 (m) | 0.039 | 0.045 |
 
 同オーダーで一致しており、較正は論文同等に成功している（差は再現実行による揺らぎの範囲）。
+
+上記の回転・並進 RMSE は [`compute_rmse.py`](compute_rmse.py) で再計算できる（標準ライブラリのみ・numpy 不要、現時点では gate-01 のみ対応）。
+
+```bash
+python3 compute_rmse.py                     # デフォルトで result/GRIL_Calib_result.txt を読む
+python3 compute_rmse.py path/to/result.txt  # 別の result ファイルを指定
+```
 
 ### 削除
 
