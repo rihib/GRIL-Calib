@@ -28,6 +28,7 @@ docker run --privileged -it \
            -e NVIDIA_DRIVER_CAPABILITIES=all \
            -e NVIDIA_VISIBLE_DEVICES=all \
            --volume="$PROJECT_DIR:/root/catkin_ws/src" \
+           --volume="$PROJECT_DIR/data:/root/bags" \
            --volume=/tmp/.X11-unix:/tmp/.X11-unix:rw \
            --net=host \
            --ipc=host \
